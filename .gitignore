@@ -1,0 +1,100 @@
+# ==============================================================================
+# Byte-compiled / optimized / DLL files
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==============================================================================
+# Virtual Environments
+# ==============================================================================
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.env/
+
+# ==============================================================================
+# Environment variables & Secrets
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+!.env.example
+secrets.toml
+.streamlit/secrets.toml
+
+# ==============================================================================
+# Machine Learning & Deep Learning (YOLO / Ultralytics / Models)
+# ==============================================================================
+# Model weights & checkpoints
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.weights
+*.bin
+# Ultralytics automatic training/tracking output directories
+runs/
+wandb/
+
+# ==============================================================================
+# Large Media & Video Datasets / Test Outputs
+# ==============================================================================
+videos/*.mp4
+videos/*.MP4
+videos/*.avi
+videos/*.mov
+videos/*.mkv
+
+# Temporary test frame & video outputs
+output_*.mp4
+output_*.jpg
+output_*.png
+test_*_result.*
+output/
+outputs/
+
+# ==============================================================================
+# Distribution / Packaging
+# ==============================================================================
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# ==============================================================================
+# Jupyter Notebooks & Caches
+# ==============================================================================
+.ipynb_checkpoints/
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==============================================================================
+# IDEs & Code Editors
+# ==============================================================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ==============================================================================
+# Operating System
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
