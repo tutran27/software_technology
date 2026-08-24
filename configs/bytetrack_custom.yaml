@@ -1,0 +1,15 @@
+# Cấu hình ByteTrack tùy chỉnh tối ưu cho video UAV / Drone
+# Giúp giữ Track ID lâu hơn khi xe bị che khuất (occlusion) hoặc dừng đỗ
+
+tracker_type: bytetrack # (str) Loại tracker
+
+track_high_thresh: 0.25 # (float) Ngưỡng lọc detection vòng 1
+track_low_thresh: 0.05  # (float) Ngưỡng lọc detection vòng 2 (hạ thấp để dễ cứu track khi xe bị che khuất)
+new_track_thresh: 0.30  # (float) Ngưỡng tạo track mới (tăng nhẹ để tránh tạo ID ảo)
+
+track_buffer: 90        # (int) SỐ FRAME GIỮ TRACK KHI MẤT DẤU (Mặc định gốc là 30)
+                        # - Video 30 FPS: 90 frames = giữ ~3 giây
+                        # - Video 60 FPS: 180 frames = giữ ~3 giây
+
+match_thresh: 0.70      # (float) Ngưỡng IoU matching (giảm từ 0.8 xuống 0.7 để dễ khớp lại khi xe di chuyển)
+fuse_score: True        # (bool) Kết hợp confidence score với IoU để ổn định detection

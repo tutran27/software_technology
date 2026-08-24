@@ -1,0 +1,21 @@
+# Cấu hình BoT-SORT tùy chỉnh cho video UAV / Drone di động
+# Bổ sung bù trừ chuyển động camera (GMC) và tăng thời gian giữ track
+
+tracker_type: botsort
+
+track_high_thresh: 0.25 # Ngưỡng detection vòng 1
+track_low_thresh: 0.05  # Ngưỡng detection vòng 2 (cứu track bị che khuất)
+new_track_thresh: 0.30  # Ngưỡng tạo track mới
+
+track_buffer: 90        # GIỮ TRACK TRONG 90 FRAMES (~3 giây với video 30fps)
+match_thresh: 0.70      # Ngưỡng IoU matching
+fuse_score: True
+
+# BoT-SORT Specifics (Rất tốt cho Camera Drone di chuyển/rung lắc)
+gmc_method: sparseOptFlow # Bù trừ chuyển động camera: sparseOptFlow | orb | sift | ecc | none
+
+# Tùy chọn ReID (Nhận diện theo đặc trưng hình ảnh)
+proximity_thresh: 0.5
+appearance_thresh: 0.8
+with_reid: False        # Bật True nếu muốn ReID sâu (tốn thêm tài nguyên tính toán)
+model: auto
