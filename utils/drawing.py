@@ -8,6 +8,12 @@ import numpy as np
 from utils.config import CLASS_COLORS_BGR
 
 
+def _normalize_name(name: str) -> str:
+    """Chuẩn hóa nhãn lớp phương tiện."""
+    n = str(name).lower().strip()
+    return "motorcycle" if n in ("motor", "motorcycle", "motorbike") else n
+
+
 def _draw_single_box(
     img: np.ndarray,
     bbox: List[int],
@@ -17,7 +23,7 @@ def _draw_single_box(
     conf_val: Optional[float] = None,
     show_labels: bool = True
 ):
-    """Hàm helper vẽ 1 bounding box kèm nhãn."""
+    """Hàm trợ giúp vẽ 1 bounding box kèm nhãn Cyber UI."""
     x1, y1, x2, y2 = bbox
     cv2.rectangle(img, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
 
@@ -50,7 +56,7 @@ def draw_vehicle_boxes(
 
     if detections is not None:
         for item in detections:
-            cls_name = "motorcycle" if str(item.get("class", "car")).lower() in ("motor", "motorcycle") else str(item.get("class", "car")).lower()
+            cls_name = _normalize_name(item.get("class", "car"))
             color = CLASS_COLORS_BGR.get(cls_name, (255, 128, 0))
             _draw_single_box(
                 img,
@@ -69,8 +75,8 @@ def draw_vehicle_boxes(
         id_arr = boxes.id.int().cpu().numpy() if boxes.id is not None else [None] * len(boxes)
 
         for i in range(len(boxes)):
-            raw_name = names.get(int(cls_arr[i]), f"class_{int(cls_arr[i])}").lower()
-            cls_name = "motorcycle" if raw_name in ("motor", "motorcycle") else raw_name
+            raw_name = names.get(int(cls_arr[i]), f"class_{int(cls_arr[i])}")
+            cls_name = _normalize_name(raw_name)
             color = CLASS_COLORS_BGR.get(cls_name, (255, 128, 0))
             _draw_single_box(
                 img,
@@ -139,7 +145,7 @@ def draw_vehicle_tracking_overlay(
     # 3. Vẽ Bounding Box & Trail từng xe
     for obj in tracked_objects:
         tid = obj["id"]
-        cls_name = "motorcycle" if obj["class"].lower() in ("motor", "motorcycle") else obj["class"].lower()
+        cls_name = _normalize_name(obj.get("class", "car"))
         color = CLASS_COLORS_BGR.get(cls_name, (255, 128, 0))
 
         if show_trail and "trail" in obj and len(obj["trail"]) > 1:

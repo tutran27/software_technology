@@ -1,9 +1,10 @@
 """
-Module LLM Traffic Profile: Tích hợp Groq API với mô hình openai/gpt-oss-20b.
-Chức năng:
-- Tiếp nhận số liệu giám sát nút giao thời gian thực (Lưu lượng, Mật độ OCR, Vận tốc, Điểm CI).
-- Sử dụng openai/gpt-oss-20b để suy luận và đưa ra khuyến nghị điều khiển pha đèn giao thông thích ứng.
-- Trả về bản Traffic Control Profile có cấu trúc rõ ràng dạng Markdown.
+Module LLM Traffic Profile: Tích hợp AI tư duy (Groq / OpenAI API).
+
+Chức năng chính:
+- Tiếp nhận số liệu giám sát nút giao thời gian thực (Lưu lượng xe, Mật độ OCR, Vận tốc, Chỉ số CI).
+- Sử dụng LLM suy luận và đưa ra khuyến nghị điều khiển pha đèn giao thông thích ứng.
+- Sinh bản Traffic Control Profile định dạng Markdown với luật chuyên gia dự phòng khi offline.
 """
 
 import os
@@ -17,11 +18,13 @@ except ImportError:
 
 
 class TrafficAdvisor:
-    """Tạo khuyến nghị điều khiển đèn tín hiệu giao thông thông minh từ LLM (openai/gpt-oss-20b)."""
+    """Tư vấn điều khiển đèn giao thông thông minh từ LLM hoặc Luật Chuyên gia."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "openai/gpt-oss-20b"):
+    DEFAULT_MODEL = "llama-3.1-70b-versatile"
+
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
-        self.model = model
+        self.model = model or os.getenv("LLM_MODEL") or self.DEFAULT_MODEL
         self.client = None
 
         if self.api_key:
@@ -29,7 +32,7 @@ class TrafficAdvisor:
                 from groq import Groq
                 self.client = Groq(api_key=self.api_key)
             except Exception as e:
-                print(f"⚠️ Không thể khởi tạo Groq Client: {e}")
+                print(f"⚠️ Khởi tạo Groq Client thất bại: {e}")
 
     def is_available(self) -> bool:
         """Kiểm tra xem LLM API client đã sẵn sàng chưa."""
@@ -40,7 +43,7 @@ class TrafficAdvisor:
         density_stats: Dict[str, Any],
         vehicle_counts: Dict[str, int]
     ) -> str:
-        """Sinh Traffic Control Profile từ dữ liệu giám sát thời gian thực."""
+        """Sinh bản Traffic Control Profile dựa trên số liệu giao thông."""
         if not self.is_available():
             return self._generate_fallback_template(density_stats, vehicle_counts)
 
@@ -49,44 +52,45 @@ class TrafficAdvisor:
         avg_speed = density_stats.get("avg_speed", density_stats.get("avg_speed_kmh", 0.0))
         stopped_ratio = density_stats.get("stopped_ratio", 0.0)
         vehicle_count = density_stats.get("vehicle_count", 0)
+        congestion_level = density_stats.get("congestion_level", "Bình thường")
 
         prompt = f"""
 Bạn là chuyên gia hàng đầu về phân tích và điều khiển hệ thống đèn tín hiệu giao thông thông minh (Adaptive Traffic Signal Control).
 Dưới đây là số liệu giám sát thời gian thực thu thập từ camera UAV tại nút giao:
 
 === THỐNG KÊ GIÁM SÁT DÒNG XE TỪ UAV ===
-- Số phương tiện hiện diện trong vùng nút giao: {vehicle_count} xe
+- Số phương tiện hiện diện trong nút giao: {vehicle_count} xe
 - Chi tiết phương tiện đã đếm: {vehicle_counts}
 - Tỷ lệ chiếm dụng mặt đường (OCR): {ocr}%
 - Vận tốc trung bình dòng xe: {avg_speed} km/h
 - Tỷ lệ xe dừng chờ: {stopped_ratio}%
-- Chỉ số tắc nghẽn tổng hợp (Congestion Index - CI): {ci}/100 ({density_stats.get('congestion_level', 'N/A')})
+- Chỉ số tắc nghẽn tổng hợp (CI): {ci}/100 ({congestion_level})
 
 HÃY TẠO BẢN 'TRAFFIC CONTROL PROFILE' BẰNG TIẾNG VIỆT GỒM 3 MỤC:
 1. Đánh giá tình trạng giao thông (ngắn gọn, định lượng).
 2. Khuyến nghị điều chỉnh thời gian đèn tín hiệu (thêm/bớt bao nhiêu giây cho từng hướng Bắc-Nam vs Đông-Tây).
-3. Bảng chu kỳ đèn đề xuất (Thời gian Xanh/Vàng/Đỏ cụ thể cho từng hướng Hướng Chính (Bắc - Nam) và Hướng Phụ (Đông - Tây), tổng chu kỳ 60s - 90s).
+3. Bảng chu kỳ đèn đề xuất (Thời gian Xanh/Vàng/Đỏ cụ thể cho Hướng Chính Bắc - Nam và Hướng Phụ Đông - Tây, tổng chu kỳ 60s - 90s).
 """
-
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=1500
+                max_tokens=1200
             )
             content = response.choices[0].message.content
             if content and content.strip():
                 return content.strip()
             return self._generate_fallback_template(density_stats, vehicle_counts)
+
         except Exception as e:
             return (
-                f"⚠️ Lỗi kết nối LLM API ({e}). Đang hiển thị khuyến nghị từ luật suy diễn cục bộ:\n\n"
+                f"⚠️ Lỗi kết nối LLM API ({e}). Đang hiển thị khuyến nghị từ Luật suy diễn cục bộ:\n\n"
                 + self._generate_fallback_template(density_stats, vehicle_counts)
             )
 
     def _generate_fallback_template(self, stats: Dict[str, Any], counts: Dict[str, int]) -> str:
-        """Sinh bản khuyến nghị dựa trên luật chuyên gia cục bộ khi không có kết nối API."""
+        """Sinh bản khuyến nghị dựa trên Luật Chuyên gia cục bộ khi không có API."""
         ci = stats.get("congestion_index", 20.0)
         ocr = stats.get("occupancy_rate", 15.0)
 
@@ -116,12 +120,12 @@ HÃY TẠO BẢN 'TRAFFIC CONTROL PROFILE' BẰNG TIẾNG VIỆT GỒM 3 MỤC:
 """
 
 
-# Alias để tương thích ngược với các file import cũ
+# Alias tương thích ngược
 GroqTrafficAdvisor = TrafficAdvisor
 
 
 def generate_traffic_profile(metrics: Dict[str, Any]) -> str:
-    """Hàm tiện ích sinh Traffic Control Profile từ dict metrics tổng hợp."""
+    """Hàm tiện ích sinh Traffic Control Profile từ dict metrics."""
     advisor = TrafficAdvisor()
     counts = metrics.get("counts", {"car": 0, "motorcycle": 0, "bus": 0, "truck": 0})
     density_stats = {

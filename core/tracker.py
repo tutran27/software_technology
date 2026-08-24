@@ -1,9 +1,6 @@
 """
 Module Tracker: Theo dõi đa đối tượng phương tiện (Multi-Object Tracking).
-Hỗ trợ:
-- ByteTrack: Tốc độ cao, liên kết 2 giai đoạn Kalman Filter + Hungarian.
-- BoT-SORT: Tích hợp Camera Motion Compensation (CMC) bù rung lắc camera drone UAV.
-- Lưu trữ lịch sử quỹ đạo phục vụ vẽ vệt di chuyển và đếm xe.
+Hỗ trợ ByteTrack và BoT-SORT (tích hợp Camera Motion Compensation - CMC).
 """
 
 from typing import Dict, List, Tuple, Any, Optional
@@ -11,15 +8,20 @@ from collections import deque
 import numpy as np
 from ultralytics import YOLO
 
-
 TRACKER_CONFIG_MAP = {
     "ByteTrack": "bytetrack.yaml",
     "BoT-SORT": "botsort.yaml",
 }
 
 
+def normalize_class_name(raw_name: str) -> str:
+    """Chuẩn hóa tên nhãn class phương tiện."""
+    name = raw_name.lower().strip()
+    return "motorcycle" if name in ("motor", "motorcycle", "motorbike") else name
+
+
 class VehicleTracker:
-    """Wrapper quản lý bám vết phương tiện theo thời gian thực."""
+    """Quản lý bám vết (MOT) và lưu lịch sử quỹ đạo phương tiện thời gian thực."""
 
     def __init__(
         self,
@@ -32,17 +34,17 @@ class VehicleTracker:
     ):
         self.model = YOLO(model_path)
         self.tracker_name = tracker_name
-        self.tracker_config = TRACKER_CONFIG_MAP.get(tracker_name, "bytetrack.yaml")
+        self.tracker_config = TRACKER_CONFIG_MAP.get(tracker_name, tracker_name if tracker_name.endswith(".yaml") else "bytetrack.yaml")
         self.conf = conf
         self.iou = iou
         self.device = device if device else None
         self.max_trail_len = max_trail_len
 
         self.tracks_history: Dict[int, deque] = {}
-        self.unique_track_ids = set()
+        self.unique_track_ids: set = set()
 
     def track_frame(self, frame: np.ndarray, imgsz: int = 640) -> Tuple[List[Dict[str, Any]], Any]:
-        """Chạy Detection + Tracking trên 1 frame."""
+        """Chạy bám vết (Detection + MOT) trên một frame."""
         results = self.model.track(
             source=frame,
             imgsz=imgsz,
@@ -67,8 +69,8 @@ class VehicleTracker:
                 tid = int(track_id)
                 self.unique_track_ids.add(tid)
 
-                raw_name = self.model.names.get(int(cls_id), f"class_{cls_id}").lower()
-                cls_name = "motorcycle" if raw_name in ("motor", "motorcycle") else raw_name
+                raw_name = self.model.names.get(int(cls_id), f"class_{cls_id}")
+                cls_name = normalize_class_name(raw_name)
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
                 if tid not in self.tracks_history:
@@ -87,7 +89,7 @@ class VehicleTracker:
         return tracked_objects, results
 
     def reset(self):
-        """Reset trạng thái tracking."""
+        """Reset lịch sử bám vết."""
         self.tracks_history.clear()
         self.unique_track_ids.clear()
         if hasattr(self.model, "predictor") and self.model.predictor is not None:
