@@ -20,7 +20,7 @@ class UAVTrafficPipeline:
 
     def __init__(
         self,
-        model_path: str = "models/best_2_dataset.pt",
+        model_path: str = "models/best.pt",
         tracker_name: str = "BoT-SORT",
         conf: float = 0.25,
         iou: float = 0.45,

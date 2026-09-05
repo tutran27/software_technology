@@ -65,10 +65,10 @@ def process_video(
     model: YOLO,
     video_path: str,
     output_path: str,
-    conf: float = 0.25,
+    conf: float = 0.1,
     iou: float = 0.45,
-    imgsz: int = 640,
-    tracker: str = "bytetrack.yaml",
+    imgsz: int = 1280,
+    tracker: str = "botsort.yaml",
     device: str = "",
     num_frames: int = 0,
     show: bool = True
@@ -147,7 +147,7 @@ def process_video(
 def main():
     parser = argparse.ArgumentParser(description="Script kiểm tra nhận diện YOLO11 trên ảnh/video")
     parser.add_argument("--source", "-s", type=str, default="videos/output_videos/M0702.mp4", help="Đường dẫn file ảnh/video hoặc thư mục")
-    parser.add_argument("--model", "-m", type=str, default="models/best_2_dataset.pt", help="Đường dẫn trọng số YOLO (.pt)")
+    parser.add_argument("--model", "-m", type=str, default="models/best.pt", help="Đường dẫn trọng số YOLO (.pt)")
     parser.add_argument("--output-dir", "-o", type=str, default="outputs", help="Thư mục lưu kết quả")
     parser.add_argument("--conf", type=float, default=0.25, help="Ngưỡng confidence")
     parser.add_argument("--iou", type=float, default=0.45, help="Ngưỡng IoU")
