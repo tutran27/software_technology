@@ -23,6 +23,8 @@ class VehicleDetector:
             imgsz=imgsz,
             conf=self.conf,
             iou=self.iou,
+            rect=True,
+            agnostic_nms=True,
             device=self.device,
             verbose=False
         )[0]

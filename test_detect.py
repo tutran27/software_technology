@@ -19,12 +19,29 @@ from ultralytics import YOLO
 from utils.drawing import draw_hud, draw_vehicle_boxes
 
 
+def resolve_tracker_path(tracker_arg: str) -> str:
+    """Tự động chuyển đổi tên tracker thành file cấu hình tối ưu trong configs/ nếu có."""
+    tracker_lower = tracker_arg.lower().strip()
+    if tracker_lower in ("bytetrack", "bytetrack.yaml", "bytetrack_custom.yaml", "configs/bytetrack.yaml", "configs/bytetrack_custom.yaml"):
+        custom = Path("configs/bytetrack_custom.yaml")
+        if custom.exists():
+            return str(custom)
+    elif tracker_lower in ("botsort", "bot-sort", "botsort.yaml", "botsort_custom.yaml", "configs/botsort.yaml", "configs/botsort_custom.yaml"):
+        custom = Path("configs/botsort_custom.yaml")
+        if custom.exists():
+            return str(custom)
+    return tracker_arg
+
+
 def process_image(
     model: YOLO,
     image_path: str,
     output_path: str,
     conf: float = 0.25,
     imgsz: int = 640,
+    rect: bool = True,
+    agnostic_nms: bool = True,
+    augment: bool = False,
     device: str = "",
     show: bool = True
 ):
@@ -38,6 +55,9 @@ def process_image(
         source=frame,
         imgsz=imgsz,
         conf=conf,
+        rect=rect,
+        agnostic_nms=agnostic_nms,
+        augment=augment,
         device=device if device else None,
         verbose=False
     )[0]
@@ -67,8 +87,11 @@ def process_video(
     output_path: str,
     conf: float = 0.1,
     iou: float = 0.45,
-    imgsz: int = 1280,
-    tracker: str = "botsort.yaml",
+    imgsz: int = 640,
+    tracker: str = "configs/bytetrack_custom.yaml",
+    rect: bool = True,
+    agnostic_nms: bool = True,
+    augment: bool = False,
     device: str = "",
     num_frames: int = 0,
     show: bool = True
@@ -95,6 +118,7 @@ def process_video(
         print("🖥️ Đang hiển thị video realtime (Nhấn 'q' hoặc ESC trên cửa sổ video để dừng)...")
 
     print(f"\n🚀 Đang xử lý video: {video_path} ({max_frames} frames)...")
+    print(f"⚙️ Cấu hình: imgsz={imgsz} | rect={rect} | agnostic_nms={agnostic_nms} | augment={augment} | tracker={tracker}")
     processed = 0
     t_start = time.time()
 
@@ -112,6 +136,9 @@ def process_video(
                 imgsz=imgsz,
                 conf=conf,
                 iou=iou,
+                rect=rect,
+                agnostic_nms=agnostic_nms,
+                augment=augment,
                 device=device if device else None,
                 verbose=False
             )[0]
@@ -149,16 +176,24 @@ def main():
     parser.add_argument("--source", "-s", type=str, default="videos/output_videos/M0702.mp4", help="Đường dẫn file ảnh/video hoặc thư mục")
     parser.add_argument("--model", "-m", type=str, default="models/best.pt", help="Đường dẫn trọng số YOLO (.pt)")
     parser.add_argument("--output-dir", "-o", type=str, default="outputs", help="Thư mục lưu kết quả")
-    parser.add_argument("--conf", type=float, default=0.25, help="Ngưỡng confidence")
+    parser.add_argument("--conf", type=float, default=0, help="Ngưỡng confidence (khuyến nghị 0.15 - 0.25)")
     parser.add_argument("--iou", type=float, default=0.45, help="Ngưỡng IoU")
-    parser.add_argument("--imgsz", type=int, default=640, help="Kích thước ảnh inference")
+    parser.add_argument("--imgsz", type=int, default=1920, help="Kích thước ảnh inference")
     parser.add_argument("--device", type=str, default="", help="Thiết bị: '0', 'cpu', ''")
     parser.add_argument("--num-frames", "-n", type=int, default=0, help="Số frame tối đa cần xử lý (0 = tất cả)")
-    parser.add_argument("--tracker", type=str, default="bytetrack.yaml", help="Tracker config (bytetrack.yaml / botsort.yaml)")
+    parser.add_argument("--tracker", type=str, default="configs/bytetrack_custom.yaml", help="Tracker config (configs/bytetrack_custom.yaml / configs/botsort_custom.yaml)")
+    parser.add_argument("--no-rect", action="store_true", help="Tắt chế độ inference tỉ lệ chữ nhật (mặc định BẬT rect=True)")
+    parser.add_argument("--no-agnostic-nms", action="store_true", help="Tắt class-agnostic NMS (mặc định BẬT agnostic_nms=True)")
+    parser.add_argument("--augment", action="store_true", help="Bật Test-Time Augmentation (TTA) tăng recall cho trường hợp mờ/khó")
     parser.add_argument("--no-show", action="store_true", help="Tắt cửa sổ hiển thị realtime (chỉ lưu file)")
     args = parser.parse_args()
 
     show = not args.no_show
+    rect = not args.no_rect
+    agnostic_nms = not args.no_agnostic_nms
+    augment = args.augment
+    tracker_config = resolve_tracker_path(args.tracker)
+
     source_p = Path(args.source)
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -180,15 +215,15 @@ def main():
             print(f"\n[{idx}/{len(files)}] Xử lý: {f.name}")
             out_file = str(out_dir / f.name)
             if f.suffix.lower() in valid_img_exts:
-                process_image(model, str(f), out_file, args.conf, args.imgsz, args.device, show)
+                process_image(model, str(f), out_file, args.conf, args.imgsz, rect, agnostic_nms, augment, args.device, show)
             else:
-                process_video(model, str(f), out_file, args.conf, args.iou, args.imgsz, args.tracker, args.device, args.num_frames, show)
+                process_video(model, str(f), out_file, args.conf, args.iou, args.imgsz, tracker_config, rect, agnostic_nms, augment, args.device, args.num_frames, show)
     else:
         out_file = str(out_dir / source_p.name)
         if source_p.suffix.lower() in valid_img_exts:
-            process_image(model, str(source_p), out_file, args.conf, args.imgsz, args.device, show)
+            process_image(model, str(source_p), out_file, args.conf, args.imgsz, rect, agnostic_nms, augment, args.device, show)
         else:
-            process_video(model, str(source_p), out_file, args.conf, args.iou, args.imgsz, args.tracker, args.device, args.num_frames, show)
+            process_video(model, str(source_p), out_file, args.conf, args.iou, args.imgsz, tracker_config, rect, agnostic_nms, augment, args.device, args.num_frames, show)
 
 
 if __name__ == "__main__":

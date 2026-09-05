@@ -3,14 +3,15 @@ Module Tracker: Theo dõi đa đối tượng phương tiện (Multi-Object Trac
 Hỗ trợ ByteTrack và BoT-SORT (tích hợp Camera Motion Compensation - CMC).
 """
 
+import os
 from typing import Dict, List, Tuple, Any, Optional
 from collections import deque
 import numpy as np
 from ultralytics import YOLO
 
 TRACKER_CONFIG_MAP = {
-    "ByteTrack": "bytetrack.yaml",
-    "BoT-SORT": "botsort.yaml",
+    "ByteTrack": "configs/bytetrack_custom.yaml" if os.path.exists("configs/bytetrack_custom.yaml") else "bytetrack.yaml",
+    "BoT-SORT": "configs/botsort_custom.yaml" if os.path.exists("configs/botsort_custom.yaml") else "botsort.yaml",
 }
 
 
@@ -52,6 +53,8 @@ class VehicleTracker:
             tracker=self.tracker_config,
             conf=self.conf,
             iou=self.iou,
+            rect=True,
+            agnostic_nms=True,
             device=self.device,
             verbose=False
         )[0]
